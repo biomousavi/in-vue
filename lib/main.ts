@@ -21,7 +21,7 @@ function isCompatibleVueVersion() {
   return major === 3 && minor >= 2
 }
 
-export function defineInVueComponent(
+function defineInVueComponent(
   loader: ComponentLoader,
   options: EnhancedAsyncComponentOptions = {},
 ): DefineComponent {
@@ -130,3 +130,5 @@ export function defineInVueComponent(
     },
   }) as DefineComponent
 }
+
+export { defineInVueComponent }
