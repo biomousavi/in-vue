@@ -1,97 +1,132 @@
-import { h, defineAsyncComponent, defineComponent, ref, onMounted, version } from 'vue'
-import type { AsyncComponentLoader, Component } from 'vue'
+import { defineAsyncComponent, h, defineComponent, ref, onMounted, version } from 'vue'
+import type { Component, DefineComponent, AsyncComponentOptions } from 'vue'
 
-type ComponentResolver = (component: Component) => void
+// Type for loader / import() function
+type ComponentLoader = () => Promise<{ default: Component }>
 
-export function isCompatibleVueVersion() {
+// Enhanced options interface
+interface EnhancedAsyncComponentOptions extends Omit<AsyncComponentOptions, 'loader'> {
+  // Retry-related options
+  maxRetries?: number
+  retryDelay?: number
+
+  // Viewport loading options
+  observerOptions?: IntersectionObserverInit
+  loadingComponent?: Component
+}
+
+// Check Vue compatibility (optional, but carried over from original implementation)
+function isCompatibleVueVersion() {
   const [major, minor] = version.split('.').map(Number)
   return major === 3 && minor >= 2
 }
 
-export const defineVisibleComponent = ({
-  componentLoader,
-  loadingComponent,
-  errorComponent,
-  delay,
-  timeout,
-}: {
-  componentLoader: AsyncComponentLoader
-  loadingComponent?: Component
-  errorComponent?: Component
-  delay?: number
-  timeout?: number
-}) => {
-  let resolveComponent: ComponentResolver
-
-  // throw error if vue version is incompatible
+export function createAsyncComponent(
+  loader: ComponentLoader,
+  options: EnhancedAsyncComponentOptions = {},
+): DefineComponent {
+  // Throw error if Vue version is incompatible
   if (!isCompatibleVueVersion()) {
     throw new Error('Incompatible Vue Version: Minimum compatible vue version is 3.2.0')
   }
 
+  // Destructure with default values
+  const {
+    maxRetries = 3,
+    timeout = 30000,
+    retryDelay = 1000,
+    observerOptions = {},
+    loadingComponent,
+    ...restOptions
+  } = options
+
+  // If IntersectionObserver is not supported, fallback to standard async component
+  if (!('IntersectionObserver' in window)) {
+    return defineAsyncComponent({
+      ...restOptions,
+
+      loader,
+      timeout,
+      onError(error, retry, fail, attempts) {
+        console.warn(`Async component load attempt ${attempts} failed:`, error)
+
+        if (attempts > maxRetries) {
+          console.error('Max retries exceeded. Component load failed.')
+          fail()
+          return
+        }
+
+        const baseDelay = retryDelay * Math.pow(2, attempts - 1)
+        const jitteredDelay = baseDelay * (1 + Math.random() * 0.5)
+
+        setTimeout(retry, jitteredDelay)
+      },
+    }) as DefineComponent
+  }
+
+  // Viewport-aware async component
   return defineAsyncComponent({
-    // the loader function
+    ...restOptions,
     loader: () => {
       return new Promise((resolve) => {
-        // We assign the resolve function to a variable
-        // that we can call later inside the loadingComponent
-        // when the component becomes visible
-        resolveComponent = resolve as ComponentResolver
-      })
-    },
-    // A component to use while the async component is loading
-    loadingComponent: defineComponent({
-      setup() {
-        // We create a ref to the root element of
-        // the loading component
-        const elRef = ref()
+        // eslint-disable-next-line prefer-const
+        let resolveComponent: (component: { default: Component }) => void
 
-        async function loadComponent() {
-          // `resolveComponent()` receives the
-          // the result of the dynamic `import()`
-          // that is returned from `componentLoader()`
-          const component = await componentLoader()
-          resolveComponent(component)
-        }
+        const loadingComponentWrapper = defineComponent({
+          setup() {
+            const elRef = ref<HTMLElement>()
 
-        onMounted(async () => {
-          // We immediately load the component if
-          // IntersectionObserver is not supported
-          if (!('IntersectionObserver' in window)) {
-            await loadComponent()
-            return
-          }
-
-          const observer = new IntersectionObserver(async (entries) => {
-            if (!entries[0].isIntersecting) {
-              return
+            async function loadComponent() {
+              try {
+                const component = await loader()
+                resolveComponent(component)
+              } catch (error) {
+                console.error('Component loading failed', error)
+              }
             }
 
-            // We cleanup the observer when the
-            // component is not visible anymore
-            observer.unobserve(elRef.value)
-            await loadComponent()
-          })
+            onMounted(async () => {
+              const observer = new IntersectionObserver(async (entries) => {
+                if (!entries[0].isIntersecting) return
 
-          // We observe the root of the
-          // mounted loading component to detect
-          // when it becomes visible
-          observer.observe(elRef.value)
+                // Unobserve to prevent multiple loads
+                observer.unobserve(elRef.value!)
+
+                await loadComponent()
+              }, observerOptions)
+
+              // Observe the root element
+              observer.observe(elRef.value!)
+            })
+
+            return () => {
+              const content = loadingComponent ? h(loadingComponent) : h('div', 'Loading...')
+
+              return h('div', { ref: elRef }, content)
+            }
+          },
         })
 
-        return () => {
-          // Use provided loading component or default to a simple div
-          const content = loadingComponent ? h(loadingComponent) : h('div', 'Loading...')
+        // Assign the resolve function to be used in the loading component
+        resolveComponent = resolve as (component: { default: Component }) => void
 
-          return h('div', { ref: elRef }, content)
-        }
-      },
-    }),
-    // Delay before showing the loading component. Default: 200ms.
-    delay,
-    // A component to use if the load fails
-    errorComponent,
-    // The error component will be displayed if a timeout is
-    // provided and exceeded. Default: Infinity.
+        return h(loadingComponentWrapper)
+      })
+    },
     timeout,
-  })
+    onError(error, retry, fail, attempts) {
+      console.warn(`Async component load attempt ${attempts} failed:`, error)
+
+      if (attempts > maxRetries) {
+        console.error('Max retries exceeded. Component load failed.')
+        fail()
+        return
+      }
+
+      const baseDelay = retryDelay * Math.pow(2, attempts - 1)
+      const jitteredDelay = baseDelay * (1 + Math.random() * 0.5)
+
+      setTimeout(retry, jitteredDelay)
+    },
+  }) as DefineComponent
 }
