@@ -1,8 +1,19 @@
 {
-  "name": "vue-visible-component",
+  "name": "in-vue",
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/in-vue.umd.cjs",
+  "module": "./dist/in-vue.js",
+  "exports": {
+    ".": {
+      "import": "./dist/in-vue.js",
+      "require": "./dist/in-vue.umd.cjs"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
@@ -10,10 +21,10 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
-    "format": "prettier --write src/"
+    "format": "prettier --write lib/"
   },
   "dependencies": {
-    "vue": "^3.2.0"
+    "vue": "^3.2.25"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.0",
