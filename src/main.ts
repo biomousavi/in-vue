@@ -21,7 +21,7 @@ function isCompatibleVueVersion() {
   return major === 3 && minor >= 2
 }
 
-export function createAsyncComponent(
+export function defineInVueComponent(
   loader: ComponentLoader,
   options: EnhancedAsyncComponentOptions = {},
 ): DefineComponent {
