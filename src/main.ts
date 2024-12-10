@@ -1,7 +1,12 @@
-import { h, defineAsyncComponent, defineComponent, ref, onMounted } from 'vue'
+import { h, defineAsyncComponent, defineComponent, ref, onMounted, version } from 'vue'
 import type { AsyncComponentLoader, Component } from 'vue'
 
 type ComponentResolver = (component: Component) => void
+
+export function isCompatibleVueVersion() {
+  const [major, minor] = version.split('.').map(Number)
+  return major === 3 && minor >= 2
+}
 
 export const defineVisibleComponent = ({
   componentLoader,
@@ -17,6 +22,11 @@ export const defineVisibleComponent = ({
   timeout?: number
 }) => {
   let resolveComponent: ComponentResolver
+
+  // throw error if vue version is incompatible
+  if (!isCompatibleVueVersion()) {
+    throw new Error('Incompatible Vue Version: Minimum compatible vue version is 3.2.0')
+  }
 
   return defineAsyncComponent({
     // the loader function
