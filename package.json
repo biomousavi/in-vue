@@ -12,6 +12,9 @@
     "lint": "eslint . --fix",
     "format": "prettier --write src/"
   },
+  "peerDependencies": {
+    "vue": "^3.2.0"
+  },
   "dependencies": {
     "vue": "^3.5.13"
   },
