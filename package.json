@@ -18,6 +18,7 @@
   ],
   "main": "./dist/in-vue.umd.cjs",
   "module": "./dist/in-vue.js",
+  "types": "./dist/in-vue.d.ts",
   "exports": {
     ".": {
       "import": "./dist/in-vue.js",
