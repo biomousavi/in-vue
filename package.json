@@ -19,6 +19,7 @@
   "exports": {
     ".": {
       "import": "./dist/in-vue.js",
+      "types": "./dist/in-vue.d.ts",
       "require": "./dist/in-vue.umd.cjs"
     }
   },
