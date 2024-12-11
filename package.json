@@ -3,6 +3,8 @@
   "version": "0.0.2",
   "private": false,
   "type": "module",
+  "author": "nick@biomousavi.com",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/biomousavi/in-vue.git"
