@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "private": false,
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/biomousavi/in-vue.git"
+  },
   "files": [
     "dist"
   ],
